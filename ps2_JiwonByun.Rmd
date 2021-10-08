@@ -108,9 +108,9 @@ filtered_d = filtered_d %>%
 
 Even better, let's split this into separate data frames for hypothesis 1 and hypothesis 2, since they are different types of experiments with different measurements, and therefore different analyses that will need to be performed. Now that we've cleaned up the data, this is pretty easy to do! We'll just drop the columns that are for the other hypothesis. The `select` function lets us choose which columns to remove (instead of which to keep) by putting a minus sign in front of them. First, let's create a dataset for the rating hypothesis by getting rid of the game performance columns:
 
-```{r}
-rating_hyp_d = filtered_d %>% 
-  filter(is.na(DoNotUseVideoGamePerformanceData)) %>% # first, let's get rid of the subjects who did so poorly on one game that their data is unusable
+```{r, echo = TRUE}
+rating_hyp_d = filtered_d |> 
+  filter(is.na(DoNotUseVideoGamePerformanceData)) |> # first, let's get rid of the subjects who did so poorly on one game that their data is unusable
   select(-DoNotUseVideoGamePerformanceData, # now get rid of that column
          -starts_with("DinerDash"), # and the other columns we don't need
          -starts_with("SOF"))
@@ -118,9 +118,9 @@ rating_hyp_d = filtered_d %>%
 
 Now you try! Fill in the selection criteria to get rid of the "Game" columns, which we don't need for the performance hypothesis. (It's simpler than the code block above, because you don't need to do a `filter` first, only a `select`.)
 
-```{r}
-performance_hyp_d = filtered_d %>% 
-  select( ) # your code here: remove the columns containing "Game" in the name
+```{r, echo = TRUE}
+performance_hyp_d = filtered_d |>
+  select(-contains("Game")) # your code here: remove the columns containing "Game" in the name
 ```
 
 # Converting to long form
@@ -138,7 +138,7 @@ tiny_demo_d
 
 Now, take a look at the long-form version:
 ```{r}
-tiny_demo_d %>% pivot_longer(cols=-c("Subject", "Cond"), # this tells it to transform all columns *except* these ones
+tiny_demo_d |> pivot_longer(cols=-c("Subject", "Cond"), # this tells it to transform all columns *except* these ones
                              names_to='Measurement', 
                              values_to='Value')
 ```
