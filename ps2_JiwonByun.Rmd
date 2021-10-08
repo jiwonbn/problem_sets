@@ -19,23 +19,24 @@ The dataset we're using comes from the OSF Reproduciblity project replication of
 
 First, let's load the libraries we're going to use.
 
-```{r}
-library(foreign) # for reading spss formatted data
+
+```{r, echo = TRUE}
+library(foreign)
 library(tidyr)
 library(dplyr)
-library(stringr) # useful for some string manipulation
+library(stringr)
 library(ggplot2)
 ```
 
 # Load Data
 
-```{r}
+```{r, echo = TRUE}
 d = read.spss("data/Tamiretal2008ReplicationData.sav", to.data.frame=T)
 ```
 
 Take a look at the data structure:
 
-```{r}
+```{r, echo = TRUE}
 head(d)
 ```
 
@@ -49,13 +50,14 @@ colnames(d)
 
 And see if you can figure out what range the likert scores are in. What's the highest number on the likert scale, and what's the lowest? (Hint, `d$Game1Angry1` is one of the likert rating columns, and you may want to use `unique` or `range` or `hist`)
 
-```{r}
+```{r, echo = TRUE}
 ## your code here
+d$Game1Angry1 |> range(na.rm = TRUE)
 
 ```
 
-Highest number: [Your answer here]
-Lowest number: [Your answer here]
+Highest number: 7
+Lowest number: 1
 
 # cleaning up a bit
 
@@ -71,7 +73,7 @@ First, we need to `filter` out any rows that should be excluded. According to th
 
 You can see participant 23's data and the fact that they did not do part 1 by looking at the last rows of the dataframe:
 
-```{r}
+```{r, echo = TRUE}
 tail(d)
 ```
 
