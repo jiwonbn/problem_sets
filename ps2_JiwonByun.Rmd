@@ -51,7 +51,7 @@ colnames(d)
 And see if you can figure out what range the likert scores are in. What's the highest number on the likert scale, and what's the lowest? (Hint, `d$Game1Angry1` is one of the likert rating columns, and you may want to use `unique` or `range` or `hist`)
 
 ```{r, echo = TRUE}
-## your code here
+
 d$Game1Angry1 |> range(na.rm = TRUE)
 
 ```
@@ -81,9 +81,9 @@ Notice that participant 23 has missing values for part 1.
 
 The researchers have made a column called `DoNotUse` based on their exlusion criteria. Use this column to filter the dataframe! (hint: this is a little trickier than it might be because of how R treats NA values. You may want to use `?unique` to check values in the column and check out `?is.na`.)
 
-```{r}
-filtered_d = d %>% 
-  filter(   ) # your code here: exclude subjects that are marked as "DoNotUse"
+```{r, echo = TRUE}
+filtered_d = d |>
+  filter(is.na(DoNotUse)) # your code here: exclude subjects that are marked as "DoNotUse"
 ```
 
 It's good practice to assign a new variable name (in this case `filtered_d`) to a data frame when you change it in an important way, or apply a code chunk that shouldn't be run twice. This helps prevent you seeing different results when you run your code in chunks (and might run one multiple times, or skip it, etc.) vs. knit the document.
@@ -98,7 +98,7 @@ The dataset contains a bunch of columns we don't care about:
 
 To get rid of these, we'll use the `select` function to take only the columns we need.
 
-```{r}
+```{r, echo = TRUE}
 filtered_d = filtered_d %>% 
   select(c("Subject", "Cond"), # Generally important columns for both hypotheses
          contains("Game"), # we want all the game columns for hypothesis 1
