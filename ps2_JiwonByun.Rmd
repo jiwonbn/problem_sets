@@ -297,7 +297,7 @@ performance_diff_summary_d
 
 and plot it!
 
-```{r TamirFig2}
+```{r TamirFig2, echo = TRUE}
 ggplot(performance_diff_summary_d, aes(x=ConfrontationalGame, y=MeanImprovementScore, fill=MusicCondition)) +
   geom_bar(position="dodge", stat="identity") + 
   scale_fill_brewer(palette="Set1")
