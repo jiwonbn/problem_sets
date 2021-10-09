@@ -207,22 +207,22 @@ rating_hyp_long_d = rating_hyp_long_d |>
 
 For the performance data, we need to do a little bit of manipulation of the columns in order to get to the performance measures the experimenters actually used. Because they want to compare changes in performance across games that have very different scoring systems, the easiest solution is to compare z-scores. The way they did this was to z-score performance before music, z-score performance after music, and then create a difference measure which is a difference of z-scores. (To my mind, this is actually not quite the correct way to analyze this data, but like the replication we will follow the original authors.)
 
-We'll add a new z-scored value column. However, we have to be careful! We want to z-score within *groups* of the rows, that are all the same type of measurement. For example, we want to z-score the "DinnerDashWithMusic" scores with respect to eachother, but **not** with respect to the scores from the other game, for example. We can use the `group_by` function to set groups, and then all the changes we apply will only occur within those groups until we `ungroup` the dataset.
+We'll add a new z-scored value column. However, we have to be careful! We want to z-score within *groups* of the rows, that are all the same type of measurement. For example, we want to z-score the "DinnerDashWithMusic" scores with respect to each other, but **not** with respect to the scores from the other game, for example. We can use the `group_by` function to set groups, and then all the changes we apply will only occur within those groups until we `ungroup` the dataset.
 
 To make this more concrete, let's see how the `group_by` function can let us compute means within different groups, for example mean scores on the two different games.
 
-```{r}
-performance_hyp_long_d %>% 
-  group_by(ConfrontationalGame) %>%
+```{r, echo = TRUE}
+performance_hyp_long_d |>
+  group_by(ConfrontationalGame) |>
   summarize(AvgScore = mean(Score, na.rm=T)) # the na.rm tells R to ignore NA values
 ```
 
 This makes it clear why we can't just z-score the games together! The scores are very different between games. So let's z-score within groups (using the `scale` function):
 
-```{r}
-performance_hyp_long_d = performance_hyp_long_d %>%
+```{r, echo = TRUE}
+performance_hyp_long_d = performance_hyp_long_d |>
   group_by(ConfrontationalGame, WithMusic) %>% # we're going to compute four sets of z-scores, one for the confrontational game without music, one for the confrontational game with, one for the nonconfrontational game without music, and one for the nonconfrontational game with
-  mutate(z_scored_performance = scale(Score)) %>%
+  mutate(z_scored_performance = scale(Score)) |>
   ungroup()
 ```
 
@@ -230,20 +230,21 @@ performance_hyp_long_d = performance_hyp_long_d %>%
 
 The rating hypothesis analysis also requires some grouped manipulation. The experimenters collected repeated measures on ratings in each emotion category and each music/recall category from each game. For this analysis, they averaged all the ratings over the following two variables: the given emotion and the game type, to produce a nice summary. Your job is to implement this, calling the new variable MeanRating, and save the summarized data in a new data frame called `rating_summary_d`. (Hint: use a `group_by` and a `summarize`.)
 
-```{r}
-rating_summary_d = rating_hyp_long_d %>% 
-  ## your code here
+```{r, echo = TRUE}
+rating_summary_d <- rating_hyp_long_d |>
+  group_by(ConfrontationalGame, Emotion) |>
+  summarise(MeanRating = mean(Rating, na.rm = TRUE))
 ```
 
 Let's take a look at the result:
 
-```{r}
+```{r, echo = TRUE}
 rating_summary_d
 ```
 
 And a simple bar plot (don't worry too much about what exactly this code is doing):
 
-```{r TamirFig1}
+```{r TamirFig1, echo = TRUE}
 ggplot(rating_summary_d, aes(x=ConfrontationalGame, y=MeanRating, fill=Emotion)) +
   geom_bar(position="dodge", stat="identity") + 
   scale_fill_brewer(palette="Set1")
@@ -253,7 +254,7 @@ Up to reordering (and the fact that we didn't compute error bars), this is a pre
 
 And the long form dataset makes it easy to run a linear model (don't worry too much about this, we'll talk more about it in 252). 
 
-```{r}
+```{r, echo = TRUE}
 model = lm(Rating ~ ConfrontationalGame * Emotion, rating_hyp_long_d)
 summary(model)
 ```
@@ -264,17 +265,17 @@ There are still a few more steps to go for the performance hypothesis. We need t
 
 To compute the difference score, we have to make our data a bit wider. We now want to subtract the pre-music scores from the post-music scores, which is easiest to do if they are in two different columns. To do this we'll use the `spread` function (which is more or less the opposite of `gather`)
 
-```{r}
-performance_diff_d = performance_hyp_long_d %>%
-  mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) %>% # first, tweak the variable so our code is easier to read.
-  select(-c("Score", "Measurement")) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
-  spread(WithMusic, z_scored_performance) %>%
+```{r, echo = TRUE}
+performance_diff_d = performance_hyp_long_d |>
+  mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) |> # first, tweak the variable so our code is easier to read.
+  select(-c("Score", "Measurement")) |> # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
+  spread(WithMusic, z_scored_performance) |>
   mutate(ImprovementScore=PostMusic-PreMusic)
 ```
 
 Let's take a look at the end result:
 
-```{r}
+```{r, echo = TRUE}
 performance_diff_d
 ```
 
@@ -282,14 +283,15 @@ If you don't understand every step of that code (or any other `dplyr` code), it 
 
 Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the mean differences within each game and each kind of music, and save them to a variable called `MeanImprovementScore`:
 
-```{r}
-performance_diff_summary_d = performance_diff_d %>%
-  ## Your code here
+```{r, echo = TRUE}
+performance_diff_summary_d <- performance_diff_d |>
+  group_by(ConfrontationalGame, MusicCondition) |>
+  summarise(MeanImprovementScore = mean(ImprovementScore, na.rm = TRUE))
 ```
 
 Let's take a look at your result (if it has `NA` values, how can you fix it?):
 
-```{r}
+```{r, echo = TRUE}
 performance_diff_summary_d
 ```
 
@@ -303,9 +305,27 @@ ggplot(performance_diff_summary_d, aes(x=ConfrontationalGame, y=MeanImprovementS
 
 (Bonus: also calculate the SEM in the summary data, and then add errorbars to the plot with `geom_errorbar`!)
 
+
+```{r, echo = TRUE}
+sem <- function(x) sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
+```
+
+
+```{r, echo = TRUE}
+performance_diff_summary_d2 <- performance_diff_d |>
+  group_by(ConfrontationalGame, MusicCondition) |>
+  summarise(MeanImprovementScore = mean(ImprovementScore, na.rm = TRUE),
+            SEM_ImprovementScore = sem(ImprovementScore))
+```
+
+```{r, echo = TRUE}
+performance_diff_summary_d2
+```
+
+
 Not quite as exact a replication of the effect as Fig. 1. This concurs with the [replication report](https://osf.io/7i2tf/), which says that the hypothesis 1 effect replicated, but hypothesis 2 did not. Here's a model just for thoroughness (again, don't worry too much about it):
 
-```{r}
+```{r, echo = TRUE}
 performance_model = lm(ImprovementScore ~ ConfrontationalGame * MusicCondition, performance_diff_d)
 summary(performance_model)
 ```
