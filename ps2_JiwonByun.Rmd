@@ -44,7 +44,7 @@ This data is what we call **wide form** -- each subject is a single row, and the
 
 For now, take a look at the column names to get a better idea of what all is in the dataset.
 
-```{r}
+```{r, echo = TRUE}
 colnames(d)
 ```
 
@@ -59,11 +59,11 @@ d$Game1Angry1 |> range(na.rm = TRUE)
 Highest number: 7
 Lowest number: 1
 
-# cleaning up a bit
+# Cleaning up a bit
 
 First, we'll get rid of rows and columns of the data that we don't need.
 
-## filter out excluded rows 
+## Filter out excluded rows 
 
 First, we need to `filter` out any rows that should be excluded. According to the report, there are two exclusions:
 
@@ -88,7 +88,7 @@ filtered_d = d |>
 
 It's good practice to assign a new variable name (in this case `filtered_d`) to a data frame when you change it in an important way, or apply a code chunk that shouldn't be run twice. This helps prevent you seeing different results when you run your code in chunks (and might run one multiple times, or skip it, etc.) vs. knit the document.
 
-## get rid of unnecessary columns
+## Get rid of unnecessary columns
 
 The dataset contains a bunch of columns we don't care about:
 
