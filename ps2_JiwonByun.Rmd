@@ -322,6 +322,17 @@ performance_diff_summary_d2 <- performance_diff_d |>
 performance_diff_summary_d2
 ```
 
+```{r TamirFig2a, echo = TRUE}
+ggplot(performance_diff_summary_d2, aes(x=ConfrontationalGame, y=MeanImprovementScore,
+                                        ymin=MeanImprovementScore-SEM_ImprovementScore,
+                                        ymax=MeanImprovementScore+SEM_ImprovementScore,
+                                        fill=MusicCondition)) +
+  geom_bar(position="dodge", stat="identity") +
+  geom_errorbar(position=position_dodge(0.9)) +
+  scale_fill_brewer(palette="Set1")
+```
+
+
 
 Not quite as exact a replication of the effect as Fig. 1. This concurs with the [replication report](https://osf.io/7i2tf/), which says that the hypothesis 1 effect replicated, but hypothesis 2 did not. Here's a model just for thoroughness (again, don't worry too much about it):
 
