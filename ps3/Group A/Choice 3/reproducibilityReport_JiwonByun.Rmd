@@ -1,0 +1,196 @@
+---
+title: "Reproducibility Report: Group A Choice 3"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+author: Jiwon Byun
+---
+
+-------
+
+For this exercise, please try to reproduce the results from Experiment 6 of the associated paper (Shah, Shafir, & Mullainathan, 2015). The PDF of the paper is included in the same folder as this Rmd file. 
+
+#### Methods summary:
+
+The authors were interested in the effect of scarcity on people's consistency of valuation judgments. In this study, participants played a game of Family Feud and were given either 75 s (budget - "poor" condition) or 250 s (budget - "rich" condition) to complete the game. After playing the game, participants were either primed to think about a small account of time necessary to play one round of the game (account -"small" condition) or a large account (their overall time budget to play the entire game, account - "large" condition.) Participants rated how costly it would feel to lose 10s of time to play the game. The researchers were primarily interested in an interaction between the between-subjects factors of scarcity and account, hypothesizing that those in the budget - "poor" condition would be more consistent in their valuation of the 10s regardless of account in comparison with those in the budget - "rich" condition. The authors tested this hypothesis with a 2x2 between-subjects ANOVA.
+
+------
+
+#### Target outcomes: 
+
+Below is the specific result you will attempt to reproduce (quoted directly from the results section of Experiment 6):
+
+> "One participant was excluded because of a computer
+malfunction during the game. Time-rich participants
+rated the loss as more expensive when they thought
+about a small account (M = 8.31, 95% CI = [7.78, 8.84])
+than when they thought about a large account (M = 6.50,
+95% CI = [5.42, 7.58]), whereas time-poor participants’
+evaluations did not differ between the small-account
+condition (M = 8.33, 95% CI = [7.14, 9.52]) and the large account
+condition (M = 8.83, 95% CI = [7.97, 9.69]). A 2
+(scarcity condition) × 2 (account condition) analysis of
+variance revealed a significant interaction, F(1, 69) = 5.16,
+p < .05, ηp2 = .07." (Shah, Shafir & Mullainathan, 2015)
+------
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+## Step 1: Load packages
+
+```{r}
+library(tidyverse) # for data munging
+library(knitr) # for kable table formating
+library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
+library(readxl) # import excel files
+library(Rmisc)
+library(purrr)
+library(broom)
+library(car)
+library(lsr)
+
+# #optional packages:
+# library(afex) #anova functions
+# library(langcog) #95 percent confidence intervals
+```
+
+# Step 2: Load data
+
+```{r}
+# Just Experiment 6
+data <- read_excel("data/study 6-accessible-feud.xlsx")
+```
+
+# Step 3: Tidy data
+
+The data are already tidy as provided by the authors.
+
+```{r}
+# view the structure of the data
+str(data)
+```
+
+
+
+# Step 4: Run analysis
+
+## Pre-processing
+
+> One participant was excluded because of a computer malfunction during the game (Shah, Shafir, & Mullainathan, 2015, p. 408)
+
+Note: The original paper does not identify the participant that was excluded, but it was later revealed through communication with the authors that it was participant #16. The exclusion is performed below. 
+
+```{r}
+# Participant #16 should be dropped from analysis 
+excluded <- "16"
+
+d <- data %>%
+  filter(!Subject %in% excluded) #participant exclusions
+
+d <- d %>%
+  mutate(Slack = as.factor(Slack)) %>%
+  mutate(Large = as.factor(Large))
+```
+
+## Descriptive statistics
+
+> Time-rich participants rated the loss as more expensive when they thought about a small account (M = 8.31, 95% CI = [7.78, 8.84]) than when they thought about a large account (M = 6.50, 95% CI = [5.42, 7.58]), whereas time-poor participants’ evaluations did not differ between the small-account condition (M = 8.33, 95% CI = [7.14, 9.52]) and the large- account condition (M = 8.83, 95% CI = [7.97, 9.69]). (Shah, Shafir, & Mullainathan, 2015, p. 408)
+
+```{r}
+# reproduce the above results here
+#require(purrr)
+#d %>% split(.$Cond) %>% map(summary)
+
+require(dplyr)
+
+#d_desc <- d %>%
+#  dplyr::group_by(Cond) %>%
+#  dplyr::summarise(N = n(),
+#                   mean = mean(expense),
+#                   low_ci = t.test(expense, conf.level=0.95)$conf.int[1],
+#                   upp_ci = t.test(expense, conf.level=0.95)$conf.int[2])
+#d_desc
+
+
+# first t-test (time-rich)
+d_t1 <- d %>%
+  filter(Cond == 1 | Cond == 3)
+t1 <- t.test(expense ~ Cond, data = d_t1, alternative = "two.sided", paired = F, conf.level = 0.95)
+
+
+# second t-test (time-poor)
+d_t2 <- d %>%
+  filter(Cond == 2 | Cond == 0)
+t2 <- t.test(expense ~ Cond, data = d_t2, alternative = "two.sided", paired = F, conf.level = 0.95)
+
+
+tab <- map_df(list(t1, t2), tidy)
+tab <- tab %>% add_column("group" = c("Time-rich", "Time-poor"))
+tab <- tab %>% select(c("group", "estimate", "estimate1", "estimate2", "statistic", "p.value", "conf.low", "conf.high", "alternative"))
+kable(tab, caption = "t-test results for Time-rich and Time-poor participants")
+
+
+require(Rmisc)
+d_desc <- d %>%
+  dplyr::group_by(Cond) %>%
+  dplyr::summarise(N = n(),
+                   mean = mean(expense),
+                   low_ci = CI(expense)[3],
+                   upp_ci = CI(expense)[1])
+kable(d_desc, caption = "Descriptive statistics for each condition")
+
+```
+
+## Inferential statistics
+
+> A 2 (scarcity condition) × 2 (account condition) analysis of variance revealed a significant interaction, F(1, 69) = 5.16, p < .05, ηp2 = .07.
+
+```{r}
+# reproduce the above results here
+
+# levene's test for homogeneity of variance
+#leveneTest(expense ~ Slack*Large, data = d)
+# p-value is 0.0067, so unequal variances? But we have equal sample sizes so can run ANOVA I guess (just wanted to run this for practice)
+
+anova1 <- aov(expense ~ Slack*Large, data = d)
+summary(anova1)
+```
+
+```{r}
+# effect size for 2x2 ANOVA
+require(effectsize)
+eta_squared(anova1, partial = FALSE)
+```
+
+```{r}
+ggplot(data = d, aes(y = expense, x = Slack, fill = Large)) +
+  stat_summary(fun = 'mean', geom = 'bar', position = 'dodge') +
+  theme(legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        axis.line = element_line(),
+        panel.grid = element_blank(), 
+        panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Slack (Scarcity)", y = "Expense", fill = "Large (Account)")
+```
+
+
+
+# Step 5: Reflection
+
+Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
+
+> I was able to reproduce most of the results. Although, the numbers for the confidence intervals did not match perfectly. I suspect it is either that I calculated 95% CI differently than the authors or that rounding up played a role in the mismatch.
+
+How difficult was it to reproduce your results? 
+
+> It was not very difficult. I would say it was okay. 
+
+What aspects made it difficult? What aspects made it easy?
+
+> The data came in as tidy format and I think it was very easy to understand data structure. Also, there was separate `Cond` variable for each group, so it was very convenient to run t-tests and calculate group-level summary statistics. I did not know which condition refers to which group at first, but once I figured that out, everything was fine in general.
