@@ -38,6 +38,12 @@ library(tidyverse) # for data munging
 library(knitr) # for kable table formating
 library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
 library(readxl) # import excel files
+library(Rmisc)
+library(purrr)
+library(broom)
+library(car)
+library(psych)
+library(rstatix)
 
 # #optional packages/functions:
 # library(afex) # anova functions
@@ -54,43 +60,100 @@ data_path <- 'data/DeLaFuenteEtAl_2014_RawData_jbyun.xls'
 d <- read_excel(data_path, sheet=3)
 ```
 
-# Step 3: Tidy data
+# Step 3: Tidy data & Pre-processing
 
 ```{r}
 str(d)
 
-d_past <- d %>%
-  filter(subscale == "PAST")
+colnames(d) <- c('group', 'id', 'subscale', 'item', 'agreement')
 
-d_future <- d %>%
-  filter(subscale == "FUTURE")
+#d_past <- d %>%
+#  filter(subscale == "PAST")
+
+#d_future <- d %>%
+#  filter(subscale == "FUTURE")
+
+df <- pivot_wider(data = d, names_from = item, values_from = agreement)
 ```
 
 ```{r}
-df_past <- pivot_wider(data = d_past, names_from = item, values_from = "Agreement (0=complete disagreement; 5=complete agreement)")
+#df_past <- pivot_wider(data = d_past, names_from = item, values_from = 'agreement')
+#colnames(df_past) <- c('group', 'id', 'subscale', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11')  
+```
+
+```{r}
+#df_future <- pivot_wider(data = d_future, names_from = item, values_from = 'agreement')
+#colnames(df_future) <- c('group', 'id', 'subscale', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21')  
 ```
 
 
 
 ```{r}
-df <- pivot_wider(data = d, names_from = item, values_from = "Agreement (0=complete disagreement; 5=complete agreement)")
-colnames(df) <- c('group', 'participant', 'subscale', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21')   
+colnames(df) <- c('group', 'id', 'subscale', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21')
+
+df <- df %>%
+  mutate(Moroccan = ifelse(group == "Moroccan", 1, 0)) %>%
+  mutate(Moroccan = as.factor(Moroccan)) %>%
+  mutate(Future = ifelse(subscale == "FUTURE", 1, 0)) %>%
+  mutate(Future = as.factor(Future)) %>%
+  mutate(group = ifelse(group == "young Spaniard", "Spaniard", "Moroccan")) %>%
+  mutate(group = as.factor(group)) %>%
+  mutate(subscale = as.factor(subscale)) %>%
+  mutate(id = as.factor(id))
+
+# get average agreement score
+df <- df %>%
+  mutate(avg_agreement = rowMeans(df[ , c('Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21')], na.rm = T))
 ```
+
+```{r}
+col_order <- c('id', 'Moroccan', 'Future', 'avg_agreement', 'group', 'subscale', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21')
+df <- df[, col_order]
+
+col_short <- c('id', 'Moroccan', 'Future', 'avg_agreement', 'group', 'subscale')
+df_tidy <- df[, col_short]
+```
+
 
 # Step 4: Run analysis
 
 ## Pre-processing
 
-```{r}
+Pre-processing was done while tidying up data.
 
-```
 
 ## Descriptive statistics
+
+```{r}
+df_summ <- summarySE(df_tidy, measurevar = 'avg_agreement', groupvars = c('group', 'subscale'), na.rm = TRUE)
+df_summ
+#kable(df_summ)
+```
+
+```{r}
+df_tidy %>%
+  dplyr::group_by(group, subscale) %>%
+  get_summary_stats(avg_agreement, type = "mean_sd")
+```
+
+
 
 Try to recreate Figure 2 (fig2.png, also included in the same folder as this Rmd file):
 
 ```{r}
-
+ggplot(data = df_summ, aes(y = avg_agreement, x = group, fill = subscale)) +
+  geom_bar(position = position_dodge(), stat = 'identity') +
+  geom_errorbar(aes(ymin = avg_agreement - se, ymax = avg_agreement + se),
+                width = .2, position = position_dodge(.9)) +
+  coord_cartesian(ylim = c(2.0, 4.0)) +
+  scale_y_continuous(breaks = seq(2.00, 4.00, 0.25)) +
+  theme(legend.direction = "vertical",
+        legend.background = element_rect(fill = "transparent"),
+        axis.line = element_line(),
+        panel.grid = element_blank(), 
+        panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Group", y = "Rating", fill = "Temporal Focus")
 ```
 
 ## Inferential statistics
@@ -98,34 +161,72 @@ Try to recreate Figure 2 (fig2.png, also included in the same folder as this Rmd
 > According to a mixed analysis of variance (ANOVA) with group (Spanish vs. Moroccan) as a between-subjects factor and temporal focus (past vs. future) as a within-subjects factor, temporal focus differed significantly between Spaniards and Moroccans, as indicated by a significant interaction of temporal focus and group, F(1, 78) = 19.12, p = .001, ηp2 = .20 (Fig. 2).
 
 ```{r}
-# reproduce the above results here
-
+# two-way mixed design ANOVA using the r base function
+aov_mix <- aov(avg_agreement ~ Moroccan*Future + Error(id/Future), data = df_tidy)
+summary(aov_mix)
 ```
+
+
+
+```{r}
+# reproduce the above results here: two-way mixed ANOVA using rstatix package
+mix_anova <- anova_test(data = df_tidy, dv = avg_agreement, wid = id, between = Moroccan, within = Future)
+get_anova_table(mix_anova)
+```
+
+This test (Mixed ANOVA using `rstatix` package) gives me results that are more similar to those from original work.
+
+
+
+
 
 > Moroccans showed greater agreement with past-focused statements than Spaniards did, t(78) = 4.04, p = .001, 
 
 ```{r}
 # reproduce the above results here
+df_past <- df_tidy %>%
+  filter(Future == 0)
 
+t1 <- t.test(avg_agreement ~ group, data = df_past, alternative = "two.sided", conf.level = 0.95)
+t1
 ```
+
+I would say the test statistic seems similar.
 
 > and Spaniards showed greater agreement with future-focused statements than Moroccans did, t(78) = −3.32, p = .001.(de la Fuente et al., 2014, p. 1685)
 
 ```{r}
 # reproduce the above results here
+df_future <- df_tidy %>%
+  filter(Future == 1)
+
+t2 <- t.test(avg_agreement ~ group, data = df_future, alternative = "two.sided", conf.level = 0.95)
+t2
+```
+
+The test statistic seems similar here as well.
+
+```{r}
+tab <- map_df(list(t1, t2), tidy)
+tab <- tab %>% add_column("group" = c("Past", "Future"))
+tab <- tab %>% select(c("group", "estimate", "estimate1", "estimate2", "statistic", "p.value", "conf.low", "conf.high", "alternative"))
+kable(tab, caption = "t-test results (Mean agreement by group) for Past-focused statements and Future-focused statements")
 
 ```
+
+
 
 # Step 5: Reflection
 
 Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
 
-> ANSWER HERE
+> For the most part, I was able to get similar numbers. However, I could not exactly reproducte the results I attempted to reproduce. I used two different packages to run the mixed design ANOVA and got different results in terms of test statistics. Only one of the results seemed similar to the original results.
 
 How difficult was it to reproduce your results? 
 
-> ANSWER HERE
+> I was quite difficult. The dataset was not in the tidy format, so I had to tidy up data first. There were also errors in the dataset, which made me to make some decisions.
 
 What aspects made it difficult? What aspects made it easy?
 
-> ANSWER HERE
+> First, there were errors in the data (with participant 24.) I was not sure what happened but it seemed like a coding error. So instead of dropping the observations with error I modified the data (participant number to be exact), which might have caused discrepancies between my results and the original authors'. Second, the dataset was not in a tidy format so it required some time to clean it up. What made it really difficult for me to reproduce the results was the lack of clarity in terms of the used statistical models. I had to speculate what had been done to proceed.
+Having a codebook made it easier for me to understand data. Also, having a long format data was helpful because it was easy to read and understand data structure.
