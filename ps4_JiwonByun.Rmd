@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-```{r}
+```{r, echo = T}
 library(qualtRics)
 library(tidyverse)
 library(knitr)
@@ -34,17 +34,17 @@ This part is a warmup, it should be relatively straightforward `ggplot2` practic
 
 Load data from Frank, Vul, Saxe (2011, Infancy), a study in which we measured infants' looking to hands in moving scenes. There were infants from 3 months all the way to about two years, and there were two movie conditions (`Faces_Medium`, in which kids played on a white background, and `Faces_Plus`, in which the backgrounds were more complex and the people in the videos were both kids and adults). An eye-tracker measured children's attention to faces. This version of the dataset only gives two conditions and only shows the amount of looking at hands (other variables were measured as well). 
 
-```{r}
+```{r, echo = T}
 fvs <- read_csv("data/FVS2011-hands.csv")
 ```
 
 First, use `ggplot` to plot a histogram of the ages of children in the study. NOTE: this is a repeated measures design, so you can't just take a histogram of every measurement. 
 
-```{r}
+```{r, echo = T}
 describe(fvs)
 ```
 
-```{r}
+```{r, echo = T}
 age_df <- fvs %>%
   group_by(subid) %>%
   dplyr::summarise(age = mean(age))
@@ -52,7 +52,7 @@ age_df <- fvs %>%
 
 
 
-```{r}
+```{r, echo = T}
 ggplot(data = age_df, aes(x = age)) +
   geom_histogram(aes(y = ..density..)) +
   labs(x = "Age (in Months)", y = "Density") +
@@ -63,34 +63,36 @@ ggplot(data = age_df, aes(x = age)) +
 
 Second, make a scatter plot showing hand looking as a function of age and condition. Add appropriate smoothing lines. Take the time to fix the axis labels and make the plot look nice.
 
-```{r}
+```{r, echo = T}
 ggplot(data = fvs, aes(x = age, y = hand.look, color = condition)) +
   geom_point(alpha = .5) +
   geom_smooth(method = "lm") +
   scale_x_continuous(breaks = 3:28) +
   scale_y_continuous(limits = c(0, 0.4)) +
   labs(x = "Age (in Months)", y = "Hand Looking") +
+  ggtitle("Simple Linear Model") +
   ggthemes::theme_few() +
   theme(legend.position = "top")
 ```
-```{r}
+```{r, echo = T}
 ggplot(data = fvs, aes(x = age, y = hand.look, color = condition)) +
   geom_point(alpha = .5) +
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = T) +
   scale_x_continuous(breaks = 3:28) +
   scale_y_continuous(limits = c(0, 0.4)) +
   labs(x = "Age (in Months)", y = "Hand Looking") +
+  ggtitle("Linear Model with the Second Polynomial") +
   ggthemes::theme_few() +
   theme(legend.position = "top")
 ```
 
 What do you conclude from this pattern of data?
 
-> ANSWER HERE
+> In general, there is positive assciation between age (in months) and hand looking. The slopes of the regression lines are different for each condition. For "Faces_Plus" condition, the positive association between age (in months) and hand looking is stronger than that for "Faces_Medium" condition.
 
 What statistical analyses would you perform here to quantify these differences?
 
-> ANSWER HERE
+> I would use a linear model with a moderator variable, with moderator being the condition (faces_medium or faces_plus.) I would consider adding in the second polynomial of age to the model as well.
 
 
 # Part 2: Simulation
@@ -107,13 +109,13 @@ What's the proportion of "significant" results ($p < .05$) that you see?
 
 First do this using a `for` loop.
 
-```{r}
+```{r, echo = T}
 n_sim <- 10000
 N <- 30
 
 vec_pvalue <- c()
 
-set.seed(123)
+set.seed(1)
 
 for (i in 1:n_sim){
   one_sample <- rnorm(N, mean = 0, sd = 1)
@@ -130,8 +132,8 @@ print(paste0("The proportion of significant results is ", (tab_t1[2] / (tab_t1[1
 
 Next, do this using the `replicate` function:
 
-```{r}
-set.seed(123)
+```{r, echo = T}
+set.seed(1)
 simulated_t2 <- replicate(n_sim, t.test(rnorm(N, mean = 0, sd = 1), mu = 0, alternative = "two.sided"), simplify = F)
 
 tab_t2 <- table(sapply(simulated_t2, "[[", "p.value") < 0.05)
@@ -143,7 +145,7 @@ print(paste0("The proportion of significant results is ", (tab_t2[2] / (tab_t2[1
 
 How does this compare to the intended false-positive rate of $\alpha=0.05$?
 
-> ANSWER
+> The proportion of "significant" results is 0.0502 for both methods (I set the seed to 1). The acquired value is very similar to 0.05, although it is slightly larger than 0.05.
 
 Ok, that was a bit boring. Let's try something more interesting - let's implement a p-value sniffing simulation, in the style of Simons, Nelson, & Simonsohn (2011).
 
@@ -151,25 +153,120 @@ Consider this scenario: you have done an experiment, again with 30 participants 
 
 First, write a function that implements this sampling regime.
 
-```{r}
-double.sample <- function () {
+```{r, echo = T}
+double.sample <- function (N, upper, lower) {
+    sample_vec <- c()
+    one_sample <- rnorm(N, mean = 0, sd = 1)
+    sample_vec <- c(sample_vec, one_sample)
+    
+    result <- t.test(sample_vec, mu = 0, alternative = "two.sided")
+    test_value <- result$p.value
+    
+    while (test_value < upper & test_value > lower){
+      one_sample <- rnorm(N, mean = 0, sd = 1)
+      sample_vec <- c(sample_vec, one_sample)
+      result <- t.test(sample_vec, mu = 0, alternative = "two.sided")
+      test_value <- result$p.value
+    }
+
+    return(test_value)
 }
+
 ```
 
 Now call this function 10k times and find out what happens. 
 
-```{r}
+```{r, echo = T}
+n_sim <- 10000
+N <- 30
+upper <- .25
+lower <- .05
+
+pval_vec <- c()
+
+set.seed(1)
+for (i in 1:n_sim){
+  pval_vec[i] <- double.sample(30, .25, .05)
+}
+
+```
+
+
+```{r, echo = T}
+tab_t3 <- table(pval_vec < 0.05)
+tab_t3
+
+print(paste0("The proportion of significant results is ", (tab_t3[2] / (tab_t3[1] + tab_t3[2]))))
 ```
 
 Is there an inflation of false positives? How bad is it?
 
-> ANSWER
+> There seems to be an inflation of false positives. The proportion of significant results should be around 0.05, but I got 0.0857 from the simulation above. I would say it is bad because the proportion of "significant" results almost doubled as a result of the simulation above.
 
 Now modify this code so that you can investigate this "double the sample" rule in a bit more depth. In the previous question, the researcher doubles the sample only when they think they got "close" to a significant result, i.e. when their not-significant p is less than 0.25. What if the researcher was more optimistic? See what happens in these 3 other scenarios:
 
 * The researcher doubles the sample whenever their pvalue is not significant, but it's less than 0.5.
+
+```{r, echo = T}
+n_sim <- 10000
+N <- 30
+
+pval_vec2 <- c()
+
+set.seed(1)
+for (i in 1:n_sim){
+  pval_vec2[i] <- double.sample(30, .5, .05)
+}
+
+
+tab_t4 <- table(pval_vec2 < 0.05)
+tab_t4
+
+print(paste0("The proportion of significant results is ", (tab_t4[2] / (tab_t4[1] + tab_t4[2]))))
+
+```
+
+
 * The researcher doubles the sample whenever their pvalue is not significant, but it's less than 0.75.
+
+```{r, echo = T}
+n_sim <- 10000
+N <- 30
+
+pval_vec3 <- c()
+
+set.seed(1)
+for (i in 1:n_sim){
+  pval_vec3[i] <- double.sample(30, .75, .05)
+}
+
+
+tab_t5 <- table(pval_vec3 < 0.05)
+tab_t5
+
+print(paste0("The proportion of significant results is ", (tab_t5[2] / (tab_t5[1] + tab_t5[2]))))
+
+```
+
 * The research doubles their sample whenever they get ANY pvalue that is not significant.
+
+```{r, echo = T}
+n_sim <- 10000
+N <- 30
+
+pval_vec4 <- c()
+
+set.seed(1)
+for (i in 1:n_sim){
+  pval_vec4[i] <- double.sample(30, 1, .05)
+}
+
+tab_t6 <- table(pval_vec4 < 0.05)
+tab_t6
+
+print(paste0("The proportion of significant results is ", (tab_t6[2] / (tab_t6[1] + tab_t6[2]))))
+
+```
 
 How do these choices affect the false positive rate?
 
@@ -177,9 +274,10 @@ HINT: Try to do this by making the function `double.sample` take the upper p val
 
 HINT 2: You may need more samples. Find out by looking at how the results change from run to run.
 
-```{r}
+```{r, echo = T}
+# CHECK THE ABOVE FOR THE CODES FOR EACH SCENARIO.
 ```
 
 What do you conclude on the basis of this simulation? How bad is this kind of data-dependent policy?
 
-> ANSWER
+> As I ran simulations for more "optimistic" scenarios, the false positive rate went up. (The proportion of "significant" results went up substantially, which is bad because it is supposed to stay at around the value of alpha, which is 0.05 in this case.) This kind of data-dependent policy is really bad because it means we are going to have many more "false positive" results. With this kind of data-dependent policy and publication bias, the precision of science is doomed. So we need to be careful not to implement such data-dependent policy.
