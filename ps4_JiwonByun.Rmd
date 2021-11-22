@@ -248,25 +248,25 @@ print(paste0("The proportion of significant results is ", (tab_t5[2] / (tab_t5[1
 
 ```
 
-* The research doubles their sample whenever they get ANY pvalue that is not significant.
+* The researcher doubles their sample whenever they get ANY pvalue that is not significant.
 
 ```{r, echo = T}
-n_sim <- 10000
-N <- 30
+#n_sim <- 10000
+#N <- 30
 
-pval_vec4 <- c()
+#pval_vec4 <- c()
 
-set.seed(1)
-for (i in 1:n_sim){
-  pval_vec4[i] <- double.sample(30, 1, .05)
-}
+#set.seed(1)
+#for (i in 1:n_sim){
+#  pval_vec4[i] <- double.sample(30, 1, .05)
+#}
 
-tab_t6 <- table(pval_vec4 < 0.05)
-tab_t6
-
-print(paste0("The proportion of significant results is ", (tab_t6[2] / (tab_t6[1] + tab_t6[2]))))
+#tab_t6 <- table(pval_vec4 < 0.05)
+#tab_t6
+#print(paste0("The proportion of significant results is ", (tab_t6[2] / (tab_t6[1] + tab_t6[2]))))
 
 ```
+> For this, I do not even need to run a simulation. If the researcher doubles the sample whenever they get ANY p-value that is not significant, they are going to end up with significant value every time. The codes aboves run the simulation for the situation but I am not including the results here because it was taking me too long to run the whole simulation. In this case, the proportion of significant results would be 1.00 (100%).
 
 How do these choices affect the false positive rate?
 
